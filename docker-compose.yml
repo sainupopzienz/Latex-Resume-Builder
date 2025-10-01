@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: resume_builder_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-resume_builder}
+      MYSQL_USER: ${MYSQL_USER:-resume_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-resume_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    networks:
+      - resume_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resume_builder_backend
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: ${MYSQL_USER:-resume_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-resume_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-resume_builder}
+      SECRET_KEY: ${SECRET_KEY:-MtF113YtqdT/NHGxF6xMpuAaqk19/k5Olu8UoXRVvbtQQctve5FjKm7eoUrjXFXvk5dKqbMtsBbP0K+TWc9MJA==}
+      SESSION_EXPIRY_HOURS: ${SESSION_EXPIRY_HOURS:-24}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080,http://localhost:5173}
+    ports:
+      - "5000:5000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - resume_network
+    command: >
+      sh -c "
+        python database.py &&
+        gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 --access-logfile - --error-logfile - app:app
+      "
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api}
+    container_name: resume_builder_frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - resume_network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  resume_network:
+    driver: bridge
