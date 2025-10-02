@@ -1,0 +1,222 @@
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: resume-builder
+---
+# Secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: resume-db-secret
+  namespace: resume-builder
+type: Opaque
+stringData:
+  mysql-password: "resume_password"
+  mysql-root-password: "rootpassword"
+  secret-key: "MtF113YtqdT/NHGxF6xMpuAaqk19/k5Olu8UoXRVvbtQQctve5FjKm7eoUrjXFXvk5dKqbMtsBbP0K+TWc9MJA=="
+---
+# ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: resume-config
+  namespace: resume-builder
+data:
+  mysql-host: "resume-builder.cbvnzgqo73bf.us-east-1.rds.amazonaws.com"
+  mysql-port: "3306"
+  mysql-user: "resume_user"
+  mysql-database: "resume_builder"
+  session-expiry-hours: "24"
+  allowed-origins: "*"
+---
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-backend
+  namespace: resume-builder
+  labels:
+    app: resume-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: resume-backend
+  template:
+    metadata:
+      labels:
+        app: resume-backend
+    spec:
+      imagePullSecrets:
+      - name: docker-registry-secret
+      containers:
+      - name: backend
+        image: sainupopzienz/resume-backend:v2
+        ports:
+        - containerPort: 5000
+        env:
+        - name: MYSQL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: resume-config
+              key: mysql-host
+        - name: MYSQL_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: resume-config
+              key: mysql-port
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: resume-config
+              key: mysql-user
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: resume-db-secret
+              key: mysql-password
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: resume-config
+              key: mysql-database
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: resume-db-secret
+              key: secret-key
+        - name: SESSION_EXPIRY_HOURS
+          valueFrom:
+            configMapKeyRef:
+              name: resume-config
+              key: session-expiry-hours
+        - name: ALLOWED_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: resume-config
+              key: allowed-origins
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        command: ["sh", "-c"]
+        args: ["python database.py && gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 --access-logfile - --error-logfile - app:app"]
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-backend-service
+  namespace: resume-builder
+spec:
+  selector:
+    app: resume-backend
+  ports:
+  - port: 5000
+    targetPort: 5000
+  type: ClusterIP
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-frontend
+  namespace: resume-builder
+  labels:
+    app: resume-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: resume-frontend
+  template:
+    metadata:
+      labels:
+        app: resume-frontend
+    spec:
+      imagePullSecrets:
+      - name: docker-registry-secret
+      containers:
+      - name: frontend
+        image: sainupopzienz/resume-ui:v1
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-frontend-service
+  namespace: resume-builder
+spec:
+  selector:
+    app: resume-frontend
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP
+---
+# Ingress (ALB)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: resume-builder-ingress
+  namespace: resume-builder
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: resume-backend-service
+            port:
+              number: 5000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: resume-frontend-service
+            port:
+              number: 80

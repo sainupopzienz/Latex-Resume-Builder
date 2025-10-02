@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: resume-backend
+  template:
+    metadata:
+      labels:
+        app: resume-backend
+    spec:
+      containers:
+      - name: backend
+        image: sainupopzienz/resume-backend:v2
+        ports:
+        - containerPort: 5000
+        env:
+        - name: MYSQL_HOST
+          value: "resume-builder.cbvnzgqo73bf.us-east-1.rds.amazonaws.com"
+        - name: MYSQL_PORT
+          value: "3306"
+        - name: MYSQL_USER
+          value: "resume_user"
+        - name: MYSQL_PASSWORD
+          value: "resume_password"
+        - name: MYSQL_DATABASE
+          value: "resume_builder"
+        - name: SECRET_KEY
+          value: "MtF113YtqdT/NHGxF6xMpuAaqk19/k5Olu8UoXRVvbtQQctve5FjKm7eoUrjXFXvk5dKqbMtsBbP0K+TWc9MJA=="
+        - name: SESSION_EXPIRY_HOURS
+          value: "24"
+        - name: ALLOWED_ORIGINS
+          value: "*"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-backend-service
+spec:
+  selector:
+    app: resume-backend
+  ports:
+  - port: 5000
+    targetPort: 5000
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: resume-frontend
+  template:
+    metadata:
+      labels:
+        app: resume-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: sainupopzienz/resume-ui:v1
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-frontend-service
+spec:
+  selector:
+    app: resume-frontend
+  ports:
+  - port: 80
+    targetPort: 80
+  type: NodePort

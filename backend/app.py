@@ -71,6 +71,18 @@ def submit_resume():
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
+    # Transform frontend format to backend format
+    if 'personalInfo' in data:
+        personal_info = data['personalInfo']
+        transformed_data = {
+            'full_name': personal_info.get('fullName'),
+            'user_email': personal_info.get('email'),
+            'phone': personal_info.get('phone'),
+            'location': personal_info.get('location'),
+            'sections': data.get('sections', [])
+        }
+        data = transformed_data
+
     errors = validate_resume_data(data)
     if errors:
         return jsonify({'error': 'Validation failed', 'details': errors}), 400
