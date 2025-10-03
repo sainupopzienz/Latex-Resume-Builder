@@ -8,9 +8,11 @@ from database import get_db_cursor, init_db
 from auth import login_admin, logout_admin, require_admin_auth, clean_expired_sessions
 from validators import validate_resume_data, sanitize_resume_data
 from pdf_generator import generate_resume_pdf
+from logger import setup_logger
 
 app = Flask(__name__)
 app.config.from_object(Config)
+setup_logger(app=app)
 
 CORS(app, resources={
     r"/api/*": {
@@ -27,7 +29,7 @@ def before_request():
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat()})
+    return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
 ## Admin creation must be performed via CLI script `create_admin.py` only.
 
@@ -296,6 +298,12 @@ def public_download_pdf(resume_id):
         app.logger.error(f"Error generating PDF: {str(e)}")
         return jsonify({'error': 'Failed to generate PDF'}), 500
 
+@app.route("/")
+def health():
+    print(f"Hit / endpoint")
+    return "App is working"
+
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Not found'}), 404
@@ -304,10 +312,13 @@ def not_found(error):
 def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
+
+init_db()
+clean_expired_sessions()
+
 if __name__ == '__main__':
     try:
-        init_db()
-        clean_expired_sessions()
         app.run(host='0.0.0.0', port=5000, debug=False)
+        app.logger.info("Application Started Successfully")
     except Exception as e:
         print(f"Failed to start application: {str(e)}")

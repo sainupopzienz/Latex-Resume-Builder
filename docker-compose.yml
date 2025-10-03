@@ -38,7 +38,6 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-resume_builder}
       SECRET_KEY: ${SECRET_KEY:-MtF113YtqdT/NHGxF6xMpuAaqk19/k5Olu8UoXRVvbtQQctve5FjKm7eoUrjXFXvk5dKqbMtsBbP0K+TWc9MJA==}
       SESSION_EXPIRY_HOURS: ${SESSION_EXPIRY_HOURS:-24}
-      ALLOWED_ORIGINS: "http://172.25.255.213"
     ports:
       - "127.0.0.1:5000:5000"
     depends_on:
@@ -56,9 +55,6 @@ services:
     build:
       context: .
       dockerfile: frontend.Dockerfile
-      args:
-        # VITE_API_URL: "http://localhost:5000/api"
-        VITE_API_URL:  "http://172.25.255.213/api"
     image: sainupopzienz/resume-ui:v3
     container_name: resume_builder_frontend
     restart: unless-stopped

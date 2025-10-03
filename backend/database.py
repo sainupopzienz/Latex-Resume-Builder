@@ -39,6 +39,7 @@ def init_db():
     )
 
     cursor = connection.cursor()
+    
 
     cursor.execute(f"CREATE DATABASE IF NOT EXISTS {Config.MYSQL_DATABASE}")
     cursor.execute(f"USE {Config.MYSQL_DATABASE}")

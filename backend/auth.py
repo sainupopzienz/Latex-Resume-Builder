@@ -43,7 +43,7 @@ def login_admin(email, password):
 
         session_token = generate_session_token()
         session_id = str(uuid.uuid4())
-        expires_at = datetime.utcnow() + timedelta(hours=Config.SESSION_EXPIRY_HOURS)
+        expires_at = datetime.now() + timedelta(hours=Config.SESSION_EXPIRY_HOURS)
 
         cursor.execute(
             "INSERT INTO admin_sessions (id, admin_id, session_token, expires_at) VALUES (%s, %s, %s, %s)",
