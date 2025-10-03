@@ -1,0 +1,71 @@
+# Nginx ConfigMap for API Proxy
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-proxy-config
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name localhost;
+        
+        # Frontend
+        location / {
+            root /usr/share/nginx/html;
+            index index.html index.htm;
+            try_files $uri $uri/ /index.html;
+        }
+        
+        # API Proxy to Backend
+        location /api/ {
+            proxy_pass http://resume-builder-backend-service:5000/api/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+---
+# Frontend with Nginx Proxy
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-frontend-with-proxy
+  labels:
+    app: resume-frontend-with-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: resume-frontend-with-proxy
+  template:
+    metadata:
+      labels:
+        app: resume-frontend-with-proxy
+    spec:
+      containers:
+      - name: frontend
+        image: sainupopzienz/resume-ui:v1
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-proxy-config
+---
+# Frontend Proxy Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-frontend-proxy-service
+spec:
+  selector:
+    app: resume-frontend-with-proxy
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30080
+  type: NodePort

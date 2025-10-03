@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-frontend-proxy-service
+spec:
+  selector:
+    app: resume-frontend-with-proxy
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30081
+  type: NodePort

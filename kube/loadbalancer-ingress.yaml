@@ -1,0 +1,53 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: resume-builder-ingress
+  annotations:
+    kubernetes.io/ingress.class: "alb"
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: resume-builder-backend-service
+            port:
+              number: 5000
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: resume-builder-frontend-service
+            port:
+              number: 80
+---
+# Update backend service to ClusterIP since ALB will handle external access
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-builder-backend-service
+spec:
+  type: ClusterIP
+  selector:
+    app: resume-builder-backend
+  ports:
+  - port: 5000
+    targetPort: 5000
+---
+# Update frontend service to ClusterIP since ALB will handle external access
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-builder-frontend-service
+spec:
+  type: ClusterIP
+  selector:
+    app: resume-builder-frontend
+  ports:
+  - port: 80
+    targetPort: 80

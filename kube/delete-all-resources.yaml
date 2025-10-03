@@ -1,0 +1,41 @@
+# Delete Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-builder-backend
+---
+# Delete Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-builder-backend-service
+---
+# Delete Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-builder-frontend
+---
+# Delete Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-builder-frontend-service
+---
+# Delete Frontend Proxy Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-builder-frontend-proxy
+---
+# Delete Frontend Proxy Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-builder-frontend-proxy-service
+---
+# Delete Nginx ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config

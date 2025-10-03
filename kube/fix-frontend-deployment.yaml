@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-builder-frontend
+  labels:
+    app: resume-builder-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: resume-builder-frontend
+  template:
+    metadata:
+      labels:
+        app: resume-builder-frontend
+    spec:
+      imagePullSecrets:
+      - name: docker-registry-secret
+      containers:
+      - name: frontend
+        image: sainupopzienz/resume-ui:v3
+        ports:
+        - containerPort: 80

@@ -1,0 +1,80 @@
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-builder-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: resume-builder-backend
+  template:
+    metadata:
+      labels:
+        app: resume-builder-backend
+    spec:
+      containers:
+      - name: backend
+        image: sainupopzienz/resume-backend:v2
+        ports:
+        - containerPort: 5000
+        env:
+        - name: MYSQL_HOST
+          value: "resume-builder.cbvnzgqo73bf.us-east-1.rds.amazonaws.com"
+        - name: MYSQL_USER
+          value: "resume_user"
+        - name: MYSQL_PASSWORD
+          value: "resume_password"
+        - name: MYSQL_DATABASE
+          value: "resume_builder"
+        - name: ALLOWED_ORIGINS
+          value: "http://54.152.194.43:30080"
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-builder-backend-service
+spec:
+  selector:
+    app: resume-builder-backend
+  ports:
+  - port: 5000
+    targetPort: 5000
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-builder-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: resume-builder-frontend
+  template:
+    metadata:
+      labels:
+        app: resume-builder-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: sainupopzienz/resume-ui:v1
+        ports:
+        - containerPort: 80
+        env:
+        - name: VITE_API_URL
+          value: "http://54.152.194.43:30090/api"
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-builder-frontend-service
+spec:
+  selector:
+    app: resume-builder-frontend
+  ports:
+  - port: 80
+    targetPort: 80
+  type: NodePort
